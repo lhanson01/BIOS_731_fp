@@ -1,0 +1,84 @@
+---
+title: Bayesian Graphical Lasso for Estimating Brain Networks
+author: Liam Hanson
+output: 
+  beamer_presentation:
+    theme: "default"
+    colortheme: "dolphin"
+    fonttheme: "structurebold"
+bibliography: references.bib
+---
+
+# Motivation
+
+We are interested in viewing the brain as a graph i.e. a set of nodes, say regions of the brain, and edges, the connections between these edges
+
+```{r, out.width="60%", fig.cap= "[@Hendricksen2015VisualizingDB]"}
+#| echo: FALSE
+knitr::include_graphics(
+  here::here("figures", "13-Figure1.6-1.png")
+)
+```
+
+Different brains have different network structures and therefore different local and global properties of these networks
+
+# Motivation
+
+In general, healthy brains have a so-called “small-world” or “scale-free” structure.
+
+Each node has few neighbors but it is easy for one group of nodes or sub-network to talk to another (six degrees of separation). 
+
+This implies the existence of hub nodes,
+nodes through which other areas of the network communicate.
+
+
+# Motivation 
+
+```{r, out.width="60%", fig.cap= "[@Bullmore2009]"}
+#| echo: FALSE
+knitr::include_graphics(
+  here::here("figures", "41583_2009_Article_BFnrn2575_Fig3_HTML.png")
+)
+```
+
+A contrasting example is in people with Schizophrenia. These individuals
+tend to score lower on these small-world metrics. 
+ 
+# Graph Estimation
+
+We don't observe these graphs directly
+
+```{r, out.width="60%", fig.cap="[@Buckner2013]"}
+#| echo: FALSE
+knitr::include_graphics(
+  here::here("figures", "41593_2013_Article_BFnn3423_Fig1_HTML.png")
+)
+```
+
+Instead, we have time series data for each voxel or region of interest in the
+brain where the measured quantity is the so-called BOLD signal.
+
+We will use the associations between these time series to estimate our graph.
+
+# Graph Estimation
+
+A graph can be represented as an adjacency matrix: a symmetric matrix $A$ with
+$a_{ij} = 1$ if an edge is present between node $i,j$ and $a_{ij} = 0$ otherwise.
+
+For our purposes, we assume that at time step (i.e. scan) $t$, the value of the 
+BOLD signal across all $D$ nodes $Y_D \sim MVN(0, \Sigma)$.
+
+Fact: The precision matrix $\Omega = \Sigma^{-1}$ has the property that its entries
+$\omega_{ij}$ encode the partial correlation between node $i$ and node $j$. 
+
+If $\omega_{ij} = 0$, these nodes are conditionally independent.
+
+
+
+
+
+
+
+
+
+
