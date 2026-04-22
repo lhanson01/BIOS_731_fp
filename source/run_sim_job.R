@@ -32,16 +32,6 @@ data <- sim_graph_ts(D = D,
                      p_mean = p_mean,
                      )
 
-chain_res <- vector(mode = "list", length = n_chain)
-for(chain in 1:n_chain){
-  chain_res[[chain]] <- bayesian_graphical_lasso(
-    data = data,
-    n_iter = n_iter,
-    n_burn = n_burn,
-    simID = simID
-  )
-}
-
 date <- gsub("-", "", Sys.Date())
 results_path <- file.path(here::here("results"))
 if(!file.exists(results_path)){
@@ -51,12 +41,27 @@ if(!file.exists(results_path)){
 filename <- paste0(results_path, "/",
                    "D_", D,"_sim_", simID, ".RDA")
 
-save(chain_res,
-     file = filename)
+if(!file.exists(file.path(results_path, filename))){
 
-print(paste("D_", D,"_sim_", simID, "done"))
+  chain_res <- vector(mode = "list", length = n_chain)
+  for(chain in 1:n_chain){
+    chain_res[[chain]] <- bayesian_graphical_lasso(
+      data = data,
+      n_iter = n_iter,
+      n_burn = n_burn,
+      simID = simID
+    )
+  }
+  
+  
+  save(chain_res,
+       file = filename)
+  
+  print(paste("D_", D,"_sim_", simID, "done"))
 
-
+} else {
+  print("File already exists")
+}
 
 
 
