@@ -26,6 +26,7 @@ D <- jobs_table$D[job]
 simID <- jobs_table$simID[job]
 
 #generate data
+set.seed(seed[job])
 data <- sim_graph_ts(D = D,
                      nt = n_t,
                      p_mean = p_mean,
@@ -52,6 +53,8 @@ filename <- paste0(results_path, "/",
 
 save(chain_res,
      file = filename)
+
+print(paste("D_", D,"_sim_", simID, "done"))
 
 
 

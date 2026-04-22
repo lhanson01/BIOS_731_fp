@@ -65,7 +65,6 @@ bayesian_graphical_lasso <- function(data, r = 1, s_par = 0.01, n_iter, n_burn,
   tau_hist[1,] <- tau[upper.tri(tau, diag = TRUE)]
   
   for(iter in 2:n_iter){
-    print(iter)
     # Sample omega
     for(i in 1:D){
       ### PARTITION ###
@@ -92,7 +91,6 @@ bayesian_graphical_lasso <- function(data, r = 1, s_par = 0.01, n_iter, n_burn,
     
     lambda <- rgamma(1, shape = r + D*(D+1)/2, 
                      rate = s_par + sum(abs(W)))
-    print(lambda)
 
     ### update tau ###
     W_vec <- as.numeric(W[upper.tri(W)])
@@ -132,6 +130,8 @@ bayesian_graphical_lasso <- function(data, r = 1, s_par = 0.01, n_iter, n_burn,
   #est_adj[upper.tri(est_adj, diag = TRUE)] <- evaluate_edge(W_mat, S, nt, D)
   
   #est <- est_adj[upper.tri(est_adj, diag = TRUE)]
+  gibbs_labels <- crude_class
+  
   if(is_sim){
     stein_gibbs <- 
       sum(diag(solve(W_mat)%*%W_true)) - log(det(solve(W_mat)%*%W_true)) - D
@@ -142,8 +142,7 @@ bayesian_graphical_lasso <- function(data, r = 1, s_par = 0.01, n_iter, n_burn,
     gibbs_perf <- eval_class(gibbs_labels, true_labels)
     glasso_perf <- eval_class(gibbs_labels, true_labels)
   } 
-  gibbs_labels <- crude_class
-
+  
   })
   
   
