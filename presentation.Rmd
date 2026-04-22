@@ -73,6 +73,41 @@ $\omega_{ij}$ encode the partial correlation between node $i$ and node $j$.
 
 If $\omega_{ij} = 0$, these nodes are conditionally independent.
 
+# Graphical Lasso
+
+- To capture this sparsity, something like LASSO (Tibshirani 1996)
+could work.
+
+- We could fit successive pairwise LASSO's and regress the residuals to obtain 
+partial correlations, but this isn't ideal
+
+- Instead, let's maximize the penalized multivariate gaussian log-likelihood
+with respect to the precision matrix:
+
+$$\textrm{log (det }\Omega) - \textrm{tr}(\frac{S}{n}\Omega) - \rho||\Omega||_1$$
+- where $S$ is the sample covariance matrix and $||\Omega||_1$ is the entry-wise
+$l_1$-norm of $\Omega$. 
+
+# Graphical Lasso
+
+- This is the approach of @friedman2007sparseinversecovarianceestimation
+
+- At a high level, it recursively fits a modified LASSO in a blockwise fashion
+using sub-gradient methods (gets around non-differentiability of $l_1$ norm.)
+
+- The focus of my project was a Bayesian approach to the Graphical Lasso by 
+@10.1214/12-BA729 to estimate the aforementioned graphs
+
+# Bayesian Graphical Lasso 
+
+We have the likelihood and prior
+$$p(\textbf{y}_t | \Omega) = \textrm{N}(\textbf{y}_t|0, \Omega^{-1} )$$
+$$p(\Omega|\lambda) = C^{-1} \prod_{i<j}\textrm{DE}(\omega_{ij}|\lambda)\prod_{i=1}^p
+\textrm{Exp}(\omega_{ij}|\frac{\lambda}{2})\cdot1_{\Omega\in M^+}$$
+
+where $M^+$ is the space of positive-definite matrices. 
+
+
 
 
 

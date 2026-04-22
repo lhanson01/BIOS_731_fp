@@ -65,6 +65,7 @@ bayesian_graphical_lasso <- function(data, r = 1, s_par = 0.01, n_iter, n_burn,
   tau_hist[1,] <- tau[upper.tri(tau, diag = TRUE)]
   
   for(iter in 2:n_iter){
+    print(iter)
     # Sample omega
     for(i in 1:D){
       ### PARTITION ###
@@ -80,9 +81,13 @@ bayesian_graphical_lasso <- function(data, r = 1, s_par = 0.01, n_iter, n_burn,
       tau_col <- tau[-i,i]
       
       C <- solve((s_corner + lambda) * solve(block_w) + solve(diag(tau_col)))
+      eig_C <- eigen(C)
+      C_eig_val <- eig_C$values
+      beta_sd <- eig_C$vectors%*%diag(sqrt(C_eig_val))%*%solve(eig_C$vectors)
+      Z <- rnorm(D-1)
       
       gamma <- rgamma(1, nt/2 + 1, (s_corner+lambda)/2)
-      beta <- MASS::mvrnorm(1, -C %*% s_col, C)
+      beta <- beta_sd%*%Z + -C %*% s_col
       
       W[-i,i] <- W[i,-i] <- beta
       W[i,i] <- gamma + t(beta)%*%solve(block_w)%*%beta
@@ -98,7 +103,7 @@ bayesian_graphical_lasso <- function(data, r = 1, s_par = 0.01, n_iter, n_burn,
     for(w in 1:length(W_vec)){
       mu_prime <- sqrt(lambda^2/ W_vec[w]^2)
       u <- brms::rinv_gaussian(1, mu_prime, lambda^2)
-      tau_vec[w] <- 1/u
+      tau_vec[w] <- max(1/u, 1e-10)
     }
     tau[upper.tri(tau)] <- tau[lower.tri(tau)] <- tau_vec
   

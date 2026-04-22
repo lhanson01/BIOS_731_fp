@@ -15,7 +15,7 @@ n_sim <- 100
 jobs_table <- expand.grid(simID = 1:n_sim, D = D_scen)
 
 job <- as.numeric(commandArgs(trailingOnly = TRUE))
-seed <- floor(runif(n_sim, 1, 10000))
+seed <- floor(runif(nrow(jobs_table), 1, 10000))
 n_iter <- 1000
 n_burn <- 200
 n_chain <- 2
