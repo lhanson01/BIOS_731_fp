@@ -1,5 +1,4 @@
 library(brms)
-library(glasso) # <-- compare posterior mode to MAP of posterior
 
 eval_class <- function(est_labels, true_labels){
   conf <- table(est_labels, true_labels)
@@ -18,11 +17,9 @@ eval_class <- function(est_labels, true_labels){
 }
 
 bayesian_graphical_lasso <- function(data, r = 1, s_par = 0.01, n_iter, n_burn,
-                                    simID = 1){
+                                    simID = 1, is_sim = TRUE){
   
   Y <- data$Y
-  W_true <- data$W_true
-  W_true_vec <- W_true[upper.tri(W_true, diag = TRUE)]
   D <- dim(as.matrix(Y))[1]
   nt <- dim(as.matrix(Y))[2]
   S <- Y%*%t(Y)
@@ -36,9 +33,13 @@ bayesian_graphical_lasso <- function(data, r = 1, s_par = 0.01, n_iter, n_burn,
   #                      scale = s_par)
   W_init <- glasso$Omega
   glasso_labels <- as.numeric(abs(W_init[upper.tri(W_init, diag = TRUE)]) > 0)
-  stein_glasso <-
-    sum(diag(solve(W_init)%*%W_true)) - log(det(solve(W_init)%*%W_true)) - D
   
+  if(is_sim){
+    W_true <- data$W_true
+    W_true_vec <- W_true[upper.tri(W_true, diag = TRUE)]
+    stein_glasso <-
+      sum(diag(solve(W_init)%*%W_true)) - log(det(solve(W_init)%*%W_true)) - D
+  }
   
   comp_time_gibbs <- system.time({
     
@@ -113,9 +114,7 @@ bayesian_graphical_lasso <- function(data, r = 1, s_par = 0.01, n_iter, n_burn,
   lambda_post_mean <- mean(lambda_hist[(n_burn+1):n_iter])
   tau_post_mean <- colMeans(tau_hist[(n_burn+1):n_iter,])
   W_cred <- apply(W_hist, MARGIN = 2, FUN = function(x) quantile(x, c(0.025, 0.975)))
-  covers <- sapply(1:length(W_post_mean), function(i){
-    W_true_vec[i] > W_cred[1,i] & W_true_vec[i] < W_cred[2,i] 
-  })
+
   crude_class <- sapply(1:length(W_post_mean), function(i){
     edge <- !(0 > W_cred[1,i] & 0 < W_cred[2,i]) 
     return(as.numeric(edge))
@@ -127,22 +126,28 @@ bayesian_graphical_lasso <- function(data, r = 1, s_par = 0.01, n_iter, n_burn,
   W_mat[upper.tri(W_mat, diag = TRUE)] <- W_post_mean
   lower_W <- t(W_mat)
   W_mat[lower.tri(W_mat)] <- lower_W[lower.tri(lower_W)] 
-  stein_gibbs <- 
-    sum(diag(solve(W_mat)%*%W_true)) - log(det(solve(W_mat)%*%W_true)) - D
+
   
   #est_adj <- matrix(NA, D, D)
   #est_adj[upper.tri(est_adj, diag = TRUE)] <- evaluate_edge(W_mat, S, nt, D)
   
   #est <- est_adj[upper.tri(est_adj, diag = TRUE)]
-  
+  if(is_sim){
+    stein_gibbs <- 
+      sum(diag(solve(W_mat)%*%W_true)) - log(det(solve(W_mat)%*%W_true)) - D
+    covers <- sapply(1:length(W_post_mean), function(i){
+      W_true_vec[i] > W_cred[1,i] & W_true_vec[i] < W_cred[2,i] 
+    })
+    true_labels <- data$edge_true
+    gibbs_perf <- eval_class(gibbs_labels, true_labels)
+    glasso_perf <- eval_class(gibbs_labels, true_labels)
+  } 
   gibbs_labels <- crude_class
-  true_labels <- data$edge_true
-  gibbs_perf <- eval_class(gibbs_labels, true_labels)
-  glasso_perf <- eval_class(gibbs_labels, true_labels)
+
   })
   
   
-    
+  if(is_sim){
   output <- list(results_tib = tibble(
                    simID = simID,
                    D = D,
@@ -151,18 +156,36 @@ bayesian_graphical_lasso <- function(data, r = 1, s_par = 0.01, n_iter, n_burn,
                    sens_gibbs = gibbs_perf$sens,
                    comp_time_gibbs = comp_time_gibbs[3],
                    lambda_gibbs = lambda_post_mean,
+                   labels_gibbs = gibbs_labels,
                    stein_gibbs = stein_gibbs,
                    omega_coverage = sum(covers)/length(covers),
                    mcc_glasso = glasso_perf$mcc,
                    spec_glasso = glasso_perf$spec,
                    sens_glasso = glasso_perf$sens,
                    comp_time_glasso = comp_time_glasso[3],
+                   lambda_glasso = lambda_init,
+                   labels_glasso = glasso_labels,
                    stein_glasso = stein_glasso,
                    ),
                  W_hist = W_hist,
                  W_true = W_true_vec,
                  g = list(data$g)
               )
+  } else {
+      output <- list(results_tib = tibble(
+                   simID = simID,
+                   D = D,
+                   comp_time_gibbs = comp_time_gibbs[3],
+                   lambda_gibbs = lambda_post_mean,
+                   labels_gibbs = gibbs_labels,
+                   comp_time_glasso = comp_time_glasso[3],
+                   lambda_glasso = lambda_init,
+                   labels_glasso = glasso_labels,
+                   W_est = W_mat
+                   ),
+                 W_hist = W_hist
+      )
+  }
                  
   
   return(output)

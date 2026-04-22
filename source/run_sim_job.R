@@ -1,5 +1,8 @@
 suppressPackageStartupMessages(library(tidyverse))
 suppressPackageStartupMessages(library(here))
+suppressPackageStartupMessages(library(igraph))
+suppressPackageStartupMessages(library(brms))
+suppressPackageStartupMessages(library(CVglasso))
 
 source(here::here("source","bayesian_graphical_lasso.R"))
 source(here::here("source","simulate_graph_data.R"))
