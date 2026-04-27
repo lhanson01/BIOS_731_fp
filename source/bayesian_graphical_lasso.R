@@ -68,6 +68,7 @@ bayesian_graphical_lasso <- function(data, r = 1, s_par = 0.01, n_iter, n_burn,
     print(iter)
     # Sample omega
     for(i in 1:D){
+      #print(i)
       ### PARTITION ###
       block_w <- W[-i,-i]
       w_col <- W[-i,i]
@@ -94,8 +95,8 @@ bayesian_graphical_lasso <- function(data, r = 1, s_par = 0.01, n_iter, n_burn,
       
     }
     
-    lambda <- rgamma(1, shape = r + D*(D+1)/2, 
-                     rate = s_par + sum(abs(W)))
+    lambda <- rgamma(1, shape = s_par + sum(abs(W)), 
+                     rate = r + D*(D+1)/2)
 
     ### update tau ###
     W_vec <- as.numeric(W[upper.tri(W)])
@@ -112,7 +113,9 @@ bayesian_graphical_lasso <- function(data, r = 1, s_par = 0.01, n_iter, n_burn,
     tau_hist[iter, ] <- tau[upper.tri(tau, diag = TRUE)]
   }
   
-  
+  print(n_burn)
+  print(n_iter)
+  print(dim(W_hist))
   W_post_mean <- colMeans(W_hist[(n_burn+1):n_iter,])
   lambda_post_mean <- mean(lambda_hist[(n_burn+1):n_iter])
   tau_post_mean <- colMeans(tau_hist[(n_burn+1):n_iter,])
@@ -123,7 +126,7 @@ bayesian_graphical_lasso <- function(data, r = 1, s_par = 0.01, n_iter, n_burn,
     return(as.numeric(edge))
   })
   
-  view_estimates <- rbind(W_cred, W_true_vec)
+  #view_estimates <- rbind(W_cred, W_true_vec)
   
   W_mat <- matrix(NA, D, D)
   W_mat[upper.tri(W_mat, diag = TRUE)] <- W_post_mean
@@ -145,7 +148,7 @@ bayesian_graphical_lasso <- function(data, r = 1, s_par = 0.01, n_iter, n_burn,
     })
     true_labels <- data$edge_true
     gibbs_perf <- eval_class(gibbs_labels, true_labels)
-    glasso_perf <- eval_class(gibbs_labels, true_labels)
+    glasso_perf <- eval_class(glasso_labels, true_labels)
   } 
   
   })
@@ -172,6 +175,8 @@ bayesian_graphical_lasso <- function(data, r = 1, s_par = 0.01, n_iter, n_burn,
                    stein_glasso = stein_glasso,
                    ),
                  W_hist = W_hist,
+                 lambda_hist = lambda_hist,
+                 tau_hist = tau_hist,
                  W_true = W_true_vec,
                  g = list(data$g)
               )
@@ -184,10 +189,12 @@ bayesian_graphical_lasso <- function(data, r = 1, s_par = 0.01, n_iter, n_burn,
                    labels_gibbs = gibbs_labels,
                    comp_time_glasso = comp_time_glasso[3],
                    lambda_glasso = lambda_init,
-                   labels_glasso = glasso_labels,
-                   W_est = W_mat
+                   labels_glasso = glasso_labels
                    ),
-                 W_hist = W_hist
+                 W_hist = W_hist,
+                 lambda_hist = lambda_hist,
+                 tau_hist = tau_hist,
+                 W_est = W_mat,
       )
   }
                  

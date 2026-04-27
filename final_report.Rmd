@@ -1,0 +1,8 @@
+---
+title: Bayesian Graphical Lasso for Estimating Brain Networks
+subtitle: BIOS 731 Final Project
+author: Liam Hanson
+output: html
+bibliography: references.bib
+---
+

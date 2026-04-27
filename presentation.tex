@@ -1,0 +1,541 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+\documentclass[
+  ignorenonframetext,
+]{beamer}
+\newif\ifbibliography
+\usepackage{pgfpages}
+\setbeamertemplate{caption}[numbered]
+\setbeamertemplate{caption label separator}{: }
+\setbeamercolor{caption name}{fg=normal text.fg}
+\beamertemplatenavigationsymbolsempty
+% remove section numbering
+\setbeamertemplate{part page}{
+  \centering
+  \begin{beamercolorbox}[sep=16pt,center]{part title}
+    \usebeamerfont{part title}\insertpart\par
+  \end{beamercolorbox}
+}
+\setbeamertemplate{section page}{
+  \centering
+  \begin{beamercolorbox}[sep=12pt,center]{section title}
+    \usebeamerfont{section title}\insertsection\par
+  \end{beamercolorbox}
+}
+\setbeamertemplate{subsection page}{
+  \centering
+  \begin{beamercolorbox}[sep=8pt,center]{subsection title}
+    \usebeamerfont{subsection title}\insertsubsection\par
+  \end{beamercolorbox}
+}
+% Prevent slide breaks in the middle of a paragraph
+\widowpenalties 1 10000
+\raggedbottom
+\AtBeginPart{
+  \frame{\partpage}
+}
+\AtBeginSection{
+  \ifbibliography
+  \else
+    \frame{\sectionpage}
+  \fi
+}
+\AtBeginSubsection{
+  \frame{\subsectionpage}
+}
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math} % this also loads fontspec
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+\usepackage{lmodern}
+\usecolortheme[]{dolphin}
+\usefonttheme[]{structurebold}
+\ifPDFTeX\else
+  % xetex/luatex font selection
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{graphicx}
+\makeatletter
+\newsavebox\pandoc@box
+\newcommand*\pandocbounded[1]{% scales image to fit in text height/width
+  \sbox\pandoc@box{#1}%
+  \Gscale@div\@tempa{\textheight}{\dimexpr\ht\pandoc@box+\dp\pandoc@box\relax}%
+  \Gscale@div\@tempb{\linewidth}{\wd\pandoc@box}%
+  \ifdim\@tempb\p@<\@tempa\p@\let\@tempa\@tempb\fi% select the smaller of both
+  \ifdim\@tempa\p@<\p@\scalebox{\@tempa}{\usebox\pandoc@box}%
+  \else\usebox{\pandoc@box}%
+  \fi%
+}
+% Set default figure placement to htbp
+\def\fps@figure{htbp}
+\makeatother
+% definitions for citeproc citations
+\NewDocumentCommand\citeproctext{}{}
+\NewDocumentCommand\citeproc{mm}{%
+  \begingroup\def\citeproctext{#2}\cite{#1}\endgroup}
+\makeatletter
+ % allow citations to break across lines
+ \let\@cite@ofmt\@firstofone
+ % avoid brackets around text for \cite:
+ \def\@biblabel#1{}
+ \def\@cite#1#2{{#1\if@tempswa , #2\fi}}
+\makeatother
+\newlength{\cslhangindent}
+\setlength{\cslhangindent}{1.5em}
+\newlength{\csllabelwidth}
+\setlength{\csllabelwidth}{3em}
+\newenvironment{CSLReferences}[2] % #1 hanging-indent, #2 entry-spacing
+ {\begin{list}{}{%
+  \setlength{\itemindent}{0pt}
+  \setlength{\leftmargin}{0pt}
+  \setlength{\parsep}{0pt}
+  % turn on hanging indent if param 1 is 1
+  \ifodd #1
+   \setlength{\leftmargin}{\cslhangindent}
+   \setlength{\itemindent}{-1\cslhangindent}
+  \fi
+  % set entry spacing
+  \setlength{\itemsep}{#2\baselineskip}}}
+ {\end{list}}
+\usepackage{calc}
+\newcommand{\CSLBlock}[1]{\hfill\break\parbox[t]{\linewidth}{\strut\ignorespaces#1\strut}}
+\newcommand{\CSLLeftMargin}[1]{\parbox[t]{\csllabelwidth}{\strut#1\strut}}
+\newcommand{\CSLRightInline}[1]{\parbox[t]{\linewidth - \csllabelwidth}{\strut#1\strut}}
+\newcommand{\CSLIndent}[1]{\hspace{\cslhangindent}#1}
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\usepackage{bookmark}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same}
+\hypersetup{
+  pdftitle={Bayesian Graphical Lasso for Estimating Brain Networks},
+  pdfauthor={Liam Hanson, BIOS 731},
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+
+\title{Bayesian Graphical Lasso for Estimating Brain Networks}
+\author{Liam Hanson, BIOS 731}
+\date{}
+
+\begin{document}
+\frame{\titlepage}
+
+\begin{frame}{Overview}
+\phantomsection\label{overview}
+\begin{itemize}
+\item
+  Discuss why we might want to estimate a graph
+\item
+  Discuss the Bayesian Graphical Lasso Gibbs Sampler
+\item
+  Review results from a small simulation study
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Motivation}
+\phantomsection\label{motivation}
+We are interested in viewing the brain as a graph i.e.~a set of nodes,
+say regions of the brain, and edges, the connections between these edges
+
+\begin{figure}
+\includegraphics[width=0.6\linewidth]{figures/13-Figure1.6-1} \caption{[@Hendricksen2015VisualizingDB]}\label{fig:unnamed-chunk-1}
+\end{figure}
+
+Different brains have different network structures and therefore
+different local and global properties of these networks
+\end{frame}
+
+\begin{frame}{Motivation}
+\phantomsection\label{motivation-1}
+In general, healthy brains have a so-called ``small-world'' or
+``scale-free'' structure.
+
+Each node has few neighbors but it is easy for one group of nodes or
+sub-network to talk to another (six degrees of separation).
+
+This implies the existence of hub nodes, nodes through which other areas
+of the network communicate.
+\end{frame}
+
+\begin{frame}{Motivation}
+\phantomsection\label{motivation-2}
+\begin{figure}
+\includegraphics[width=0.6\linewidth,height=0.6\textheight]{figures/41583_2009_Article_BFnrn2575_Fig3_HTML} \caption{[@Bullmore2009]}\label{fig:unnamed-chunk-2}
+\end{figure}
+
+A contrasting example is in people with Schizophrenia. These individuals
+tend to score lower on these small-world metrics.
+\end{frame}
+
+\begin{frame}{Graph Estimation}
+\phantomsection\label{graph-estimation}
+We don't observe these graphs directly
+
+\begin{figure}
+\includegraphics[width=0.6\linewidth,height=0.6\textheight]{figures/41593_2013_Article_BFnn3423_Fig1_HTML} \caption{[@Buckner2013]}\label{fig:unnamed-chunk-3}
+\end{figure}
+
+Instead, we have time series data for each voxel or region of interest
+in the brain where the measured quantity is the so-called BOLD signal.
+
+We will use the associations between these time series to estimate our
+graph.
+\end{frame}
+
+\begin{frame}{Graph Estimation}
+\phantomsection\label{graph-estimation-1}
+A graph can be represented as an adjacency matrix: a symmetric matrix
+\(A\) with \(a_{ij} = 1\) if an edge is present between node \(i,j\) and
+\(a_{ij} = 0\) otherwise.
+
+For our purposes, we assume that at time step (i.e.~scan) \(t\), the
+value of the BOLD signal across all \(D\) nodes
+\(Y_D \sim MVN(0, \Sigma)\).
+
+Fact: The precision matrix \(\Omega = \Sigma^{-1}\) has the property
+that its entries \(\omega_{ij}\) encode the partial correlation between
+node \(i\) and node \(j\).
+
+If \(\omega_{ij} = 0\), these nodes are conditionally independent.
+Generally, we expect the true precision matrices to be sparse (recall
+scale free organization).
+\end{frame}
+
+\begin{frame}{Graphical Lasso}
+\phantomsection\label{graphical-lasso}
+\begin{itemize}
+\item
+  To capture this sparsity, something like LASSO (Tibshirani 1996) could
+  work.
+\item
+  We could fit successive pairwise LASSO's and regress the residuals to
+  obtain partial correlations, but this isn't ideal
+\item
+  Instead, let's maximize the penalized Multivariate Gaussian
+  log-likelihood with respect to the \(\Omega\):
+\end{itemize}
+
+\[\textrm{log (det }\Omega) - \textrm{tr}(\frac{S}{n}\Omega) - \rho||\Omega||_1\]
+where \(S\) is the sample covariance matrix and \(||\Omega||_1\) is the
+entry-wise \(l_1\)-norm of \(\Omega\).
+\end{frame}
+
+\begin{frame}{Graphical Lasso}
+\phantomsection\label{graphical-lasso-1}
+\begin{itemize}
+\item
+  This is the approach of Friedman, Hastie, and Tibshirani (2007)
+\item
+  At a high level, it recursively fits a modified LASSO in a blockwise
+  fashion using sub-gradient methods and coordinate descent (gets around
+  non-differentiability of \(l_1\) norm.)
+\item
+  The focus of my project was a Bayesian Gibbs-Sampler approach to the
+  Graphical Lasso by Wang (2012) to estimate the aforementioned graphs
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Bayesian Graphical Lasso via Gibbs Sampling}
+\phantomsection\label{bayesian-graphical-lasso-via-gibbs-sampling}
+We have the likelihood and prior
+\[p(\textbf{y}_t | \Omega) = MVN(\textbf{y}_t|0, \Omega^{-1} )\]
+\[p(\Omega|\lambda) = C^{-1} \prod_{i<j}\textrm{DE}(\omega_{ij}|\lambda)\prod_{i=1}^p
+\textrm{Exp}(\omega_{ii}|\frac{\lambda}{2})\cdot1_{\Omega\in M^+}\]
+
+where \(M^+\) is the space of positive-definite matrices.
+
+\begin{itemize}
+\tightlist
+\item
+  DE is the double-exponential (Laplace) distribution used in classic
+  Bayesian LASSO which induces potential shrinkage to 0.
+\item
+  Natural exponential prior on the diagonal elements i.e.~inverted
+  variances.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Bayesian Graphical Lasso}
+\phantomsection\label{bayesian-graphical-lasso}
+\begin{itemize}
+\item
+  Fact: The double exponential results from marginalizing over a mixture
+  of normals with variances \(\tau_{ij}\) and exponential mixing
+  density.
+\item
+  This results in the posterior distribution:
+\end{itemize}
+
+\[p(\Omega, \tau|\textbf{Y}, \lambda) \propto |\Omega|^{\frac{n}{2}}\textrm{ exp\{-tr }
+(\frac{1}{2}S\Omega)\}\prod_{i<j}\{\tau_{ij}^{-\frac{1}{2}}\textrm{exp}(-\frac{\omega_{ij}^2}{2\tau_{ij}})
+\textrm{exp}(-\frac{\lambda^2}{2}\tau_{ij})\}\]
+
+\[\times\prod_{i=1}^p\textrm{exp}(\frac{\lambda}{2}\omega_{ij})\cdot1_{\Omega\in M^+}\]
+
+\begin{itemize}
+\tightlist
+\item
+  The restriction to the space of positive definite matrices makes this
+  tricky, but we can work with it.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Deriving Gibbs Updates}
+\phantomsection\label{deriving-gibbs-updates}
+For each update, partition \(\Omega\), \(S\), and
+\(\mathcal{T} = \{\tau_{ij}\}_{\in D\times D}\)
+
+\[\Omega = \begin{bmatrix}
+\Omega_{11} & \boldsymbol{\omega}_{12} \\
+\boldsymbol{\omega}_{12}' & \omega_{22} 
+\end{bmatrix} \space S = \begin{bmatrix}
+S_{11} & \boldsymbol{s}_{12} \\
+\boldsymbol{s}_{12}' & s_{22} 
+\end{bmatrix} \space \mathcal{T} = \begin{bmatrix}
+\mathcal{T}_{11} & \boldsymbol{\tau}_{12} \\
+\boldsymbol{\tau}_{12}' & 0 
+\end{bmatrix} \space\]
+
+where \(\Omega_{11}, S_{11}, \mathcal{T}_{11}\) are block matrices and
+\(\boldsymbol{\omega}_{12}, \boldsymbol{s}_{12}, \boldsymbol{\tau}_{12}\)
+are length \(D-1\) vectors containing the joint precisions, sample
+covariances, and scaling factors for the current update.
+\end{frame}
+
+\begin{frame}{Deriving Gibbs Updates}
+\phantomsection\label{deriving-gibbs-updates-1}
+Then the conditional joint distribution of
+\((\boldsymbol{\omega}_{12},\omega_{22})\) is
+\[p(\boldsymbol{\omega}_{12},\omega_{22}|\Omega_{11},\mathcal{T},\textbf{Y},\lambda) \propto (\omega_{22} - \boldsymbol{\omega}_{12}' \Omega_{11}^{-1}\boldsymbol{\omega}_{12})^{\frac{n}{2}}\]
+
+\[\times \textrm{exp}[-\frac{1}{2}\{\boldsymbol{\omega}_{12}'D_{\tau}^{-1}\boldsymbol{\omega}_{12} + 2s'_{12}\boldsymbol{\omega}_{12} + (s_{22}+\lambda)\omega_{22}\}]\]
+
+by dropping out constant terms and using determinant properties.
+
+We then make the change of variables
+\[(\boldsymbol{\omega}_{12},\omega_{22}) \to (\boldsymbol{\beta} = \boldsymbol{\omega}_{12}, \gamma = \omega_{22} - \boldsymbol{\omega}_{12}' \Omega_{11}^{-1}\boldsymbol{\omega}_{12})\]
+resulting in new joint conditional . . .
+\end{frame}
+
+\begin{frame}{Deriving Gibbs Updates}
+\phantomsection\label{deriving-gibbs-updates-2}
+\[(\gamma, \boldsymbol{\beta})|(\Omega_{11}, \mathcal{T}, \textbf{Y}, \lambda) \sim
+\textrm{Gamma}(\frac{n}{2}+1, \frac{s_{22}+\lambda}{2}) \times 
+\textrm{N}(-\textbf{C}s_{21}, \textbf{C})\]
+
+where
+\(\textbf{C} = \{(s_{22}+\lambda)\Omega_{11}^{-1} + D_{\tau}^{-1}\}^{-1}\)
+
+To sample from the full conditional of \(\tau\), use:
+
+Fact: Conditional posteriors of \(u_{ij} = \frac{1}{\tau_{ij}}\) are
+independently inverse Gaussian with parameters
+\(\mu'=\sqrt{\lambda^2 / \omega_{ij}^2}, \lambda'=\lambda^2\).
+
+Finally, we sample from the full conditional of our tuning parameter
+\(\lambda\) given a prior \(\lambda \sim \textrm{Gamma}(r, s)\):
+
+\[\lambda \sim \textrm{Gamma}(r + D(D+1)/2, s + ||\Omega||_1/2)\]
+\end{frame}
+
+\begin{frame}{Final Algorithm}
+\phantomsection\label{final-algorithm}
+This leads to the algorithm for the Block Gibbs Sampler. Given current
+\(\Omega\) and \(\tau\):
+
+\begin{enumerate}
+\tightlist
+\item
+  For \(i=1,...,D\)
+\end{enumerate}
+
+\begin{enumerate}
+[(a)]
+\tightlist
+\item
+  Partition \(\Omega,S\) and \(\mathcal{T}\) as shown
+\item
+  Sample
+  \(\gamma \sim (\Omega_{11}, \mathcal{T}, \textbf{Y}, \lambda) \sim \textrm{Gamma}(\frac{n}{2}+1, \frac{s_{22}+\lambda}{2})\)
+  and
+  \(\boldsymbol{\beta} \sim \textrm{N}(-\textbf{C}s_{21}, \textbf{C})\)
+\item
+  Update
+  \(\boldsymbol{\omega}_{12}=\beta, \omega_{22} = \gamma + \beta'\Omega_{11}^{-1}\beta\)
+\end{enumerate}
+
+\begin{enumerate}
+\setcounter{enumi}{1}
+\item
+  Sample \(\lambda\) from
+  \(\lambda \sim \textrm{Gamma}(r + D(D+1)/2, s + ||\Omega||_1/2)\)
+\item
+  For \(i<j\), sample \(u_{ij} \sim \textrm{Inv-Gau}(\mu',\lambda')\)
+  and update \(\tau_{ij} = \frac{1}{u_{ij}}\)
+\end{enumerate}
+\end{frame}
+
+\begin{frame}{Implementation and Simulation Study}
+\phantomsection\label{implementation-and-simulation-study}
+\begin{itemize}
+\item
+  We will compare the performance of the Bayesian Graphical Lasso to its
+  frequentist counterpart with a focus on edge classification
+\item
+  For Graphical Lasso, we simply say an edge exists between node \(i\)
+  and node \(j\) if \(\omega_{ij} \neq 0\). Any edges which shrunk to 0
+  are said to not exist.
+\item
+  For the Bayesian Graphical Lasso, the probability of our posterior
+  estimates being exactly 0 is 0, so we say an edge exists if a 95\%
+  credible interval about the posterior mean of \(\omega_{ij}\) does not
+  contain 0.
+\item
+  Finally, for each simulation, we train the Graphical Lasso with
+  10-fold cross validation and use its estimates of \(\Omega\) and
+  \(\lambda\) as our initial Gibbs values (cheating).
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Data}
+\phantomsection\label{data}
+\begin{itemize}
+\item
+  We have four simulation scenarios with \(D \in {25,50,100,150}\) and
+  max timepoints \(T=200\).
+\item
+  To simulate functional MRI data, we generate scale-free networks with
+  \(D\) nodes then randomly rewire each node them with a small
+  probability to mimic real brain networks.
+\item
+  That graph is converted into an adjacency matrix and then each
+  non-zero edge is randomly scaled to create a sparse precision matrix
+  \(\Omega_{true} \in D \times D\)
+\item
+  We then sample \(T\) times from \(MVN(0,\Omega_{true})\) to generate
+  our simulated functional data.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Simulation Results}
+\phantomsection\label{simulation-results}
+\includegraphics[width=0.48\linewidth,height=0.48\textheight]{figures/graph_plot_D_25}
+\includegraphics[width=0.48\linewidth,height=0.48\textheight]{figures/graph_plot_D_50}
+\includegraphics[width=0.48\linewidth,height=0.48\textheight]{figures/graph_plot_D_100}
+\includegraphics[width=0.48\linewidth,height=0.48\textheight]{figures/graph_plot_D_150}
+\end{frame}
+
+\begin{frame}{Simulation Results}
+\phantomsection\label{simulation-results-1}
+Each simulation had 1000 samples with 200 burn-in samples. The sample
+appeared to mix well quickly.
+
+\pandocbounded{\includegraphics[keepaspectratio]{presentation_files/figures/diag_trace.png}}
+\end{frame}
+
+\begin{frame}{Simulation Results: Sampling}
+\phantomsection\label{simulation-results-sampling}
+\pandocbounded{\includegraphics[keepaspectratio]{presentation_files/figures/off_diag_trace.png}}
+\end{frame}
+
+\begin{frame}{Simulation Results: Sampling}
+\phantomsection\label{simulation-results-sampling-1}
+\pandocbounded{\includegraphics[keepaspectratio]{presentation_files/figures/zero_off_diag_trace.png}}
+\end{frame}
+
+\begin{frame}{Simulation Results: Edge Classification}
+\phantomsection\label{simulation-results-edge-classification}
+\pandocbounded{\includegraphics[keepaspectratio]{presentation_files/figures/sens.png}}
+\end{frame}
+
+\begin{frame}{Simulation Results: Edge Classification}
+\phantomsection\label{simulation-results-edge-classification-1}
+\pandocbounded{\includegraphics[keepaspectratio]{presentation_files/figures/spec.png}}
+\end{frame}
+
+\begin{frame}{Simulation Results: Stein Loss}
+\phantomsection\label{simulation-results-stein-loss}
+\pandocbounded{\includegraphics[keepaspectratio]{presentation_files/figures/stein.png}}
+\end{frame}
+
+\begin{frame}{Simulation Results: Coverage}
+\phantomsection\label{simulation-results-coverage}
+\pandocbounded{\includegraphics[keepaspectratio]{presentation_files/figures/omega_cov.png}}
+\end{frame}
+
+\begin{frame}{Simulation Results: Lambda}
+\phantomsection\label{simulation-results-lambda}
+\pandocbounded{\includegraphics[keepaspectratio]{presentation_files/figures/lambda.png}}
+\end{frame}
+
+\begin{frame}{Simulation Results: Computation Time}
+\phantomsection\label{simulation-results-computation-time}
+\pandocbounded{\includegraphics[keepaspectratio]{presentation_files/figures/comp.png}}
+\end{frame}
+
+\begin{frame}{Challenges}
+\phantomsection\label{challenges}
+\begin{itemize}
+\item
+  Beastly computation time for D \textgreater{} 150. Brain data even at
+  coarse parcellations has higher dimension.
+\item
+  Extremely small values for \(\tau\) matrices challenges invertibility
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Future Directions}
+\phantomsection\label{future-directions}
+\begin{itemize}
+\item
+  Speed up computation dramatically, probably via Rcpp, so that this can
+  be applied to real imaging data with higher dimension.
+\item
+  Implement Bayesian Classification rule
+\item
+  Bayesian Adaptive Graphical Lasso: allows for different \(\lambda\)'s
+  at different edges.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{References}
+\phantomsection\label{references}
+\phantomsection\label{refs}
+\begin{CSLReferences}{1}{0}
+\bibitem[\citeproctext]{ref-friedman2007sparseinversecovarianceestimation}
+Friedman, Jerome, Trevor Hastie, and Robert Tibshirani. 2007. {``Sparse
+Inverse Covariance Estimation with the Lasso.''}
+\url{https://arxiv.org/abs/0708.3517}.
+
+\bibitem[\citeproctext]{ref-10.1214ux2f12-BA729}
+Wang, Hao. 2012. {``{Bayesian Graphical Lasso Models and Efficient
+Posterior Computation}.''} \emph{Bayesian Analysis} 7 (4): 867--86.
+\url{https://doi.org/10.1214/12-BA729}.
+
+\end{CSLReferences}
+\end{frame}
+
+\end{document}

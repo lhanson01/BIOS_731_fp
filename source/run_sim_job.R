@@ -38,10 +38,14 @@ if(!file.exists(results_path)){
   dir.create(results_path, Date)
 }
 
+D <- 150
+simID <- 88
 filename <- paste0(results_path, "/",
                    "D_", D,"_sim_", simID, ".RDA")
 
-if(!file.exists(file.path(results_path, filename))){
+
+
+if(!file.exists(filename)){
 
   chain_res <- vector(mode = "list", length = n_chain)
   for(chain in 1:n_chain){

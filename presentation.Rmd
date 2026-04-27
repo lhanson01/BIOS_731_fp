@@ -1,6 +1,6 @@
 ---
 title: Bayesian Graphical Lasso for Estimating Brain Networks
-author: Liam Hanson
+author: Liam Hanson, BIOS 731
 output: 
   beamer_presentation:
     theme: "default"
@@ -8,10 +8,17 @@ output:
     fonttheme: "structurebold"
 bibliography: references.bib
 ---
+# Overview 
+
+- Discuss why we might want to estimate a graph
+
+- Discuss the Bayesian Graphical Lasso Gibbs Sampler
+
+- Review results from a small simulation study
 
 # Motivation
 
-We are interested in viewing the brain as a graph i.e. a set of nodes, say regions of the brain, and edges, the connections between these edges
+We are interested in viewing the brain as a graph i.e. a set of nodes, say regions of the brain, and edges, the connections between these nodes
 
 ```{r, out.width="60%", fig.cap= "[@Hendricksen2015VisualizingDB]"}
 #| echo: FALSE
@@ -31,16 +38,14 @@ Each node has few neighbors but it is easy for one group of nodes or sub-network
 This implies the existence of hub nodes,
 nodes through which other areas of the network communicate.
 
-
 # Motivation 
 
-```{r, out.width="60%", fig.cap= "[@Bullmore2009]"}
+```{r, out.width="60%", out.height="60%", fig.cap= "[@Bullmore2009]"}
 #| echo: FALSE
 knitr::include_graphics(
   here::here("figures", "41583_2009_Article_BFnrn2575_Fig3_HTML.png")
 )
 ```
-
 A contrasting example is in people with Schizophrenia. These individuals
 tend to score lower on these small-world metrics. 
  
@@ -48,7 +53,7 @@ tend to score lower on these small-world metrics.
 
 We don't observe these graphs directly
 
-```{r, out.width="60%", fig.cap="[@Buckner2013]"}
+```{r, out.width="50%", out.height = "50%", fig.cap="[@Buckner2013]"}
 #| echo: FALSE
 knitr::include_graphics(
   here::here("figures", "41593_2013_Article_BFnn3423_Fig1_HTML.png")
@@ -71,7 +76,9 @@ BOLD signal across all $D$ nodes $Y_D \sim MVN(0, \Sigma)$.
 Fact: The precision matrix $\Omega = \Sigma^{-1}$ has the property that its entries
 $\omega_{ij}$ encode the partial correlation between node $i$ and node $j$. 
 
-If $\omega_{ij} = 0$, these nodes are conditionally independent.
+If $\omega_{ij} = 0$, these nodes are conditionally independent. Generally,
+we expect the true precision matrices to be sparse (recall scale free 
+organization).
 
 # Graphical Lasso
 
@@ -81,38 +88,252 @@ could work.
 - We could fit successive pairwise LASSO's and regress the residuals to obtain 
 partial correlations, but this isn't ideal
 
-- Instead, let's maximize the penalized multivariate gaussian log-likelihood
-with respect to the precision matrix:
+- Instead, let's maximize the penalized Multivariate Gaussian log-likelihood
+with respect to the $\Omega$:
 
 $$\textrm{log (det }\Omega) - \textrm{tr}(\frac{S}{n}\Omega) - \rho||\Omega||_1$$
-- where $S$ is the sample covariance matrix and $||\Omega||_1$ is the entry-wise
+where $S$ is the sample covariance matrix and $||\Omega||_1$ is the entry-wise
 $l_1$-norm of $\Omega$. 
 
 # Graphical Lasso
 
 - This is the approach of @friedman2007sparseinversecovarianceestimation
 
+
 - At a high level, it recursively fits a modified LASSO in a blockwise fashion
-using sub-gradient methods (gets around non-differentiability of $l_1$ norm.)
+using sub-gradient methods and coordinate descent (gets around non-differentiability of $l_1$ norm.)
 
-- The focus of my project was a Bayesian approach to the Graphical Lasso by 
-@10.1214/12-BA729 to estimate the aforementioned graphs
 
-# Bayesian Graphical Lasso 
+- The focus of my project was a Bayesian Gibbs-Sampler approach to the Graphical Lasso 
+by @10.1214/12-BA729 to estimate the aforementioned graphs
+
+# Bayesian Graphical Lasso via Gibbs Sampling
 
 We have the likelihood and prior
-$$p(\textbf{y}_t | \Omega) = \textrm{N}(\textbf{y}_t|0, \Omega^{-1} )$$
+$$p(\textbf{y}_t | \Omega) = MVN(\textbf{y}_t|0, \Omega^{-1} )$$
 $$p(\Omega|\lambda) = C^{-1} \prod_{i<j}\textrm{DE}(\omega_{ij}|\lambda)\prod_{i=1}^p
-\textrm{Exp}(\omega_{ij}|\frac{\lambda}{2})\cdot1_{\Omega\in M^+}$$
+\textrm{Exp}(\omega_{ii}|\frac{\lambda}{2})\cdot1_{\Omega\in M^+}$$
 
 where $M^+$ is the space of positive-definite matrices. 
 
+- DE is the double-exponential (Laplace) distribution used in classic Bayesian LASSO
+which induces potential shrinkage to 0.
+- Natural exponential prior on the diagonal elements i.e. inverted variances.
+
+# Bayesian Graphical Lasso
+
+- Fact: The double exponential results from marginalizing over a mixture of 
+normals with variances $\tau_{ij}$ and exponential mixing density. 
+
+- This results in the posterior distribution:
+
+$$p(\Omega, \tau|\textbf{Y}, \lambda) \propto |\Omega|^{\frac{n}{2}}\textrm{ exp\{-tr }
+(\frac{1}{2}S\Omega)\}\prod_{i<j}\{\tau_{ij}^{-\frac{1}{2}}\textrm{exp}(-\frac{\omega_{ij}^2}{2\tau_{ij}})
+\textrm{exp}(-\frac{\lambda^2}{2}\tau_{ij})\}$$
+
+$$\times\prod_{i=1}^p\textrm{exp}(\frac{\lambda}{2}\omega_{ij})\cdot1_{\Omega\in M^+}$$
+
+- The restriction to the space of positive definite matrices makes this tricky,
+but we can work with it.
+
+# Deriving Gibbs Updates
+
+For each update, partition $\Omega$, $S$, and $\mathcal{T} = \{\tau_{ij}\}_{\in D\times D}$
+
+$$\Omega = \begin{bmatrix}
+\Omega_{11} & \boldsymbol{\omega}_{12} \\
+\boldsymbol{\omega}_{12}' & \omega_{22} 
+\end{bmatrix} \space S = \begin{bmatrix}
+S_{11} & \boldsymbol{s}_{12} \\
+\boldsymbol{s}_{12}' & s_{22} 
+\end{bmatrix} \space \mathcal{T} = \begin{bmatrix}
+\mathcal{T}_{11} & \boldsymbol{\tau}_{12} \\
+\boldsymbol{\tau}_{12}' & 0 
+\end{bmatrix} \space$$
+
+where $\Omega_{11}, S_{11}, \mathcal{T}_{11}$ are block matrices and $\boldsymbol{\omega}_{12}, \boldsymbol{s}_{12}, \boldsymbol{\tau}_{12}$ are length $D-1$ vectors containing the joint precisions, sample covariances, and scaling factors
+for the current update. 
+
+# Deriving Gibbs Updates
+
+Then the conditional joint distribution of $(\boldsymbol{\omega}_{12},\omega_{22})$
+is 
+$$p(\boldsymbol{\omega}_{12},\omega_{22}|\Omega_{11},\mathcal{T},\textbf{Y},\lambda) \propto (\omega_{22} - \boldsymbol{\omega}_{12}' \Omega_{11}^{-1}\boldsymbol{\omega}_{12})^{\frac{n}{2}}$$
+
+$$\times \textrm{exp}[-\frac{1}{2}\{\boldsymbol{\omega}_{12}'D_{\tau}^{-1}\boldsymbol{\omega}_{12} + 2s'_{12}\boldsymbol{\omega}_{12} + (s_{22}+\lambda)\omega_{22}\}]$$
+
+by dropping out constant terms and using determinant properties.
+
+We then make the change of variables
+$$(\boldsymbol{\omega}_{12},\omega_{22}) \to (\boldsymbol{\beta} = \boldsymbol{\omega}_{12}, \gamma = \omega_{22} - \boldsymbol{\omega}_{12}' \Omega_{11}^{-1}\boldsymbol{\omega}_{12})$$
+resulting in new joint conditional . . .
+
+# Deriving Gibbs Updates
+
+$$(\gamma, \boldsymbol{\beta})|(\Omega_{11}, \mathcal{T}, \textbf{Y}, \lambda) \sim
+\textrm{Gamma}(\frac{n}{2}+1, \frac{s_{22}+\lambda}{2}) \times 
+\textrm{N}(-\textbf{C}s_{21}, \textbf{C})$$
+
+where $\textbf{C} = \{(s_{22}+\lambda)\Omega_{11}^{-1} + D_{\tau}^{-1}\}^{-1}$
+
+To sample from the full conditional of $\tau$, use:
+
+Fact: Conditional posteriors of $u_{ij} = \frac{1}{\tau_{ij}}$ are independently inverse
+Gaussian with parameters $\mu'=\sqrt{\lambda^2 / \omega_{ij}^2}, \lambda'=\lambda^2$.
+
+Finally, we sample from the full conditional of our tuning parameter $\lambda$ given a prior $\lambda \sim \textrm{Gamma}(r, s)$:
+
+$$\lambda \sim \textrm{Gamma}(r + D(D+1)/2, s + ||\Omega||_1/2)$$
+
+# Final Algorithm
+
+This leads to the algorithm for the Block Gibbs Sampler. Given current $\Omega$ and $\tau$:
+
+1. For $i=1,...,D$
+  (a) Partition $\Omega,S$ and $\mathcal{T}$ as shown
+  (b) Sample $\gamma \sim (\Omega_{11}, \mathcal{T}, \textbf{Y}, \lambda) \sim \textrm{Gamma}(\frac{n}{2}+1, \frac{s_{22}+\lambda}{2})$ and 
+$\boldsymbol{\beta} \sim \textrm{N}(-\textbf{C}s_{21}, \textbf{C})$
+  (c) Update $\boldsymbol{\omega}_{12}=\beta, \omega_{22} = \gamma + \beta'\Omega_{11}^{-1}\beta$
+
+2. Sample $\lambda$ from $\lambda \sim \textrm{Gamma}(r + D(D+1)/2, s + ||\Omega||_1/2)$
+
+3. For $i<j$, sample $u_{ij} \sim \textrm{Inv-Gau}(\mu',\lambda')$ and update
+$\tau_{ij} = \frac{1}{u_{ij}}$
+
+# Implementation and Simulation Study
+
+- We will compare the performance of the Bayesian Graphical Lasso to its frequentist counterpart with a focus on edge classification 
+
+- For Graphical Lasso, we simply say an edge exists between node $i$ and node $j$ if $\omega_{ij} \neq 0$. Any edges which shrunk to 0 are said to not exist.
+
+- For the Bayesian Graphical Lasso, the probability of our posterior estimates being exactly 0 is 0, so we say an edge exists if a 95% credible interval about the posterior mean of $\omega_{ij}$ does not contain 0. 
+
+- Finally, for each simulation, we train the Graphical Lasso with 10-fold cross validation and use its estimates of $\Omega$ and $\lambda$ as our initial Gibbs values (cheating).
+
+# Data
+
+- We have four simulation scenarios with $D \in {25,50,100,150}$ and max timepoints $T=200$. 
+
+- To simulate functional MRI data, we generate scale-free networks with $D$ nodes then randomly rewire each node them with a small probability to mimic real brain networks.
+
+- That graph is converted into an adjacency matrix and then each non-zero edge is randomly scaled to create a sparse precision matrix $\Omega_{true} \in D \times D$
+
+- We then sample $T$ times from $MVN(0,\Omega_{true})$ to generate our simulated functional data.
 
 
+# Simulation Results 
+
+```{r, fig.show='hold', out.width="48%", out.height="48%"}
+#| echo: FALSE
+knitr::include_graphics(here::here("figures","graph_plot_D_25.png"))
+knitr::include_graphics(here::here("figures","graph_plot_D_50.png"))
+knitr::include_graphics(here::here("figures","graph_plot_D_100.png"))
+knitr::include_graphics(here::here("figures","graph_plot_D_150.png"))
+```
+
+# Simulation Results 
+
+Each simulation had 1000 samples with 200 burn-in samples. The sample appeared to 
+mix well quickly.
+
+```{r}
+#| echo: FALSE
+knitr::include_graphics(
+  here::here("figures", "diag_trace.png")
+)
+
+```
 
 
+# Simulation Results: Sampling
 
+```{r}
+#| echo: FALSE
+knitr::include_graphics(
+  here::here("figures", "off_diag_trace.png")
+)
+```
 
+# Simulation Results: Sampling
+
+```{r}
+#| echo: FALSE
+knitr::include_graphics(
+  here::here("figures", "zero_off_diag_trace.png")
+)
+```
+
+# Simulation Results: Edge Classification
+
+```{r}
+#| echo: FALSE
+knitr::include_graphics(
+  here::here("figures", "sens.png")
+)
+```
+
+# Simulation Results: Edge Classification
+
+```{r}
+#| echo: FALSE
+knitr::include_graphics(
+  here::here("figures", "spec.png")
+)
+```
+
+# Simulation Results: Stein Loss
+
+```{r}
+#| echo: FALSE
+knitr::include_graphics(
+  here::here("figures", "stein.png")
+)
+```
+
+# Simulation Results: Coverage
+
+```{r}
+#| echo: FALSE
+knitr::include_graphics(
+  here::here("figures", "omega_cov.png")
+)
+```
+
+# Simulation Results: Lambda
+
+```{r}
+#| echo: FALSE
+knitr::include_graphics(
+  here::here("figures", "lambda.png")
+)
+```
+
+# Simulation Results: Computation Time
+
+```{r}
+#| echo: FALSE
+knitr::include_graphics(
+  here::here("figures", "comp.png")
+)
+```
+
+# Challenges
+
+- Beastly computation time for D > 150. Brain data even at coarse parcellations
+has higher dimension.
+
+- Extremely small values for $\tau$ matrices challenges invertibility
+
+# Future Directions
+
+- Speed up computation dramatically, probably via Rcpp, so that this can be
+applied to real imaging data with higher dimension.
+
+- Implement Bayesian Classification rule
+
+- Bayesian Adaptive Graphical Lasso: allows for different $\lambda$'s at different edges. 
+
+# References
 
 
 

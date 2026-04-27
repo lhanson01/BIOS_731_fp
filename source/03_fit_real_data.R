@@ -10,44 +10,47 @@ source(here::here("source","simulate_graph_data.R"))
 source(here::here("source","run_glasso.R"))
 source(here::here("source","evaluate_edge.R"))
 
-combined_ctrls_txd <- readRDS(
+combined_ctrls_txd_full <- readRDS(
   file = here::here("output", "combined_control_TxD.rds")
 )
 
-combined_trt_txd <- readRDS(
+combined_trt_txd_full <- readRDS(
   file = here::here("output", "combined_trt_TxD.rds")
 )
 
-n_iter <- 2000
-n_burn <- 400
+combined_ctrls_txd <- as.matrix(combined_ctrls_txd_full)
+combined_trt_txd <- as.matrix(combined_trt_txd_full)
+
+
+n_iter <- 1000
+n_burn <- 100
 n_chain <- 2
+job <- as.numeric(commandArgs(trailingOnly = TRUE))
 
-Y_trt_list <- list(Y=as.matrix(combined_trt_txd))
-Y_ctrl_list <- list(Y=as.matrix(combined_trt_txd))
+job_list <- expand.grid(chain = 1:n_chain, group = c("trt","ctrl"))
 
-ctrl_chain_res <- vector(mode="list", length = n_chain)
-trt_chain_res <- vector(mode="list", length = n_chain)
+data_list <- list(trt = list(Y=combined_ctrls_txd),
+                  ctrl = list(Y=combined_trt_txd)
+  )
 
-for(i in 1:n_chain){
-  ctrl_chain_res[[i]] <- bayesian_graphical_lasso(
-    data = Y_trt_list,
+group <- job_list$group[job]
+chain <- job_list$chain[job]
+data <- data_list[[group]]
+
+
+results <- bayesian_graphical_lasso(
+    data = data,
     n_iter = n_iter,
-    n_burn = n_iter,
+    n_burn = n_burn,
     is_sim = FALSE
   )
-  
-  trt_chain_res[[i]] <- bayesian_graphical_lasso(
-    data = Y_trt_list,
-    n_iter = n_iter,
-    n_burn = n_iter,
-    is_sim = FALSE
-  )
-}
 
-saveRDS(ctrl_chain_res,
-        file = "output/ctrl_chain_res.rds")
+file_name <- paste0("real_data_group_", group, "_chain_",chain, ".rds")
+file_path <- here::here("output", file_name)
 
-saveRDS(trt_chain_res,
-        file = "output/trt_chain_res.rds")
+saveRDS(results,
+        file = file_path)
+
+
 
 
