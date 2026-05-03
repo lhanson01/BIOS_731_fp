@@ -2,7 +2,235 @@
 title: Bayesian Graphical Lasso for Estimating Brain Networks
 subtitle: BIOS 731 Final Project
 author: Liam Hanson
-output: html
+output: html_document
 bibliography: references.bib
 ---
+
+## Introduction 
+
+Brains are networks both structurally and functionally. The nodes of
+the network can be considered from brain regions all the way down to individual neurons. The edges
+are simply the connections between these nodes, whether understood to have a fully
+structural basis or not. [@Bullmore2009]
+
+In practice, these brain networks are not directly observed and must be estimated
+from so-called BOLD signal time series data observed at each voxel over the course of an fMRI scan. The dimension i.e. the number of voxels for each scan can easily range into the millions for a single image, so these voxel-wise time series are typically aggregated into larger, anatomically significant regions of interest for computational
+feasibility as well as scientific relevance. These partitions of the brain into
+distinct, pre-defined regions are known as brain atlases, or parcellations. 
+
+There are many approaches to estimating brain networks via these BOLD signal time 
+series data. Given $D$ regions of interest with $T$ observations $t \in \{1,2,3,...T\}$ corresponding to a single volume collected over the course of
+the scan, consider $Y$, the $D \times T$ matrix of all observations. One of the simplest ways to estimate a network from these data is to calculate the $D \times D$
+Pearson correlation matrix $R \propto YY^T$ and choose a threshold $\alpha$ so that
+if entry $r_{ij} > \alpha$, we declare an edge between region of interest $i$ and
+$j$ i.e. if two regions' time series are sufficiently correlated, we say they are
+connected. This approach, while intuitive, has major drawbacks. Namely, each
+entry $r_{ij}$ captures any correlation between node $i$ and node $j$ without 
+controlling for confounding nodes that they may share a connection to, allowing
+for a high number of spurious edges. 
+
+Instead, we can consider the partial correlation between node $i$ and node $j$ 
+given all other nodes $\rho_{i,j \space| -i,-j }$. This will do a better job
+than Pearson correlation at capturing real dependence between nodes by accounting 
+for confounding information. Under a Gaussian Graphical model where each $Y_t \in D \times 1$ follows a Multivariate Gaussian distribution with mean 0 and covariance $\Sigma$, the inverse of the covariance matrix $\Sigma^{-1} = \Omega$ known as the precision matrix has the quality that its entries $\omega_{ij}$ have a map simply and directly to the partial correlations $\rho_{i,j \space| -i,-j }$. Given the assumption that our data is indeed Multivariate Normal, estimating our graph then becomes a question of estimating the precision matrix $\Omega$. 
+
+A straightforward approach would be to simply take the inverse of the sample
+covariance matrix $S^{-1} = (YY^T)^{-1}$. However, in reality we expect the true
+$\Omega$ to be sparse. This is especially true in the case of 
+brain networks where the approximately scale-free architecture of the network ()
+means that most nodes will only have a few direct neighbors and thus only a few
+nodes on which they are conditionally dependent. To capture this sparsity, methods
+based on the LASSO [@10.1111/j.2517-6161.1996.tb02080.x] are often used.
+
+For this project, we implemented the Bayesian Graphical Lasso [@10.1214/12-BA729], a Bayesian
+variation on the Graphical Lasso [@friedman2007sparseinversecovarianceestimation]. We describe the method and conduct a simulation study using simulated fMRI data.
+
+## Bayesian Graphical LASSO
+
+One approach posed by @Meinshausen is to iteratively fit a LASSO for each node $i$
+using all other nodes as covariates and to declare an edge only if the corresponding
+LASSO estimate for node $j$ on node $i$ is not shrunk to zero. 
+
+We could also consider maximizing the penalized log likelihood 
+
+$$\textrm{log (det }\Omega) - \textrm{tr}(\frac{S}{n}\Omega) - \lambda||\Omega||_1$$.
+
+The first two terms are from the Multivariate Gaussian log-likelihood partially maximized with respect to the mean and the last term is $\sum_{i,j \in \{1,..,D\}} |\omega_{ij}|$, the sum of absolute values of every entry, scaled by the tuning parameter $\lambda$. 
+
+This is the approach of Friedman et all, 2007 in their development of the Graphical LASSO. They develop an algorithm to solve a LASSO-type problem 
+
+$$\textrm{argmin}_\beta||W_{11}^{1/2}\beta-b||^2_2+\lambda||\beta||_1$$
+
+after partitioning the sample covariance matrix $S$ and current estimate of the
+covariance matrix $W$ in a blockwise fashion.
+
+Wang extended this to a Bayesian Gibbs Sampler, allowing for
+direct uncertainty quantification of partial correlation i.e. edge strength as well as the tuning parameter $\lambda$. 
+
+Maintaining the same Gaussian likelihood $p(\textbf{y}_t | \Omega) = MVN(\textbf{y}_t|0, \Omega^{-1} )$, Wang introuces the Graphical LASSO prior on $\Omega$
+
+$$p(\Omega|\lambda) = C^{-1} \prod_{i<j}\textrm{DE}(\omega_{ij}|\lambda)\prod_{i=1}^p
+\textrm{Exp}(\omega_{ii}|\frac{\lambda}{2})\cdot1_{\Omega\in M^+}$$
+
+where $D^{-1}$ is a normalizing constant, $\textrm{DE(.)}$ is the double exponential
+distribution and $M^+$ is the space of positive definite matrices. In a Bayesian setting, putting a double exponential prior on the regression coefficients gives a LASSO estimate for the coefficients at the MAP [@Park01062008]. Here, the double exponential prior is applied to each off-diagonal element
+of $\Omega$ which will induce similar shrinkage for the corresponding edges. The
+diagonal elements, which represent the precision for each time series, are given
+a common exponential prior. As in classic and graphical lasso, the hyperparemeter
+$\lambda$ controls the degree of shrinkage across the entries of $\Omega$. Its prior
+is $\lambda \sim \textrm{Gamma}(r,s)$. 
+
+To make deriving the Gibbs updates possible, we can write the Double Exponential
+as the marginal distribution of $\omega_{ij}$ mixture of Gaussians with exponential mixing density and mixing parameters $\tau_{ij}$.
+
+
+$$\prod_{i<j}\textrm{DE}(\omega_{ij}|\lambda) = \int_0^{\infty}...\int_0^{\infty} \prod_{i<j}\textrm{exp}\{\frac{1}{\sqrt{2\pi\tau_{ij}}}\frac{\omega_{ij}^2}{\tau_{ij}}
+\}\cdot\frac{\lambda^2}{2}\textrm{exp}(-\frac{\lambda^2}{2}\tau_{ij})d\tau_{ij}$$
+
+Using this fact, we obtain the following form of the joint posterior distribution
+of $\Omega, \tau$
+
+$$p(\Omega, \tau|\textbf{Y}, \lambda) \propto |\Omega|^{\frac{n}{2}}\textrm{ exp\{-tr }
+(\frac{1}{2}S\Omega)\}\prod_{i<j}\{\tau_{ij}^{-\frac{1}{2}}\textrm{exp}(-\frac{\omega_{ij}^2}{2\tau_{ij}})
+\textrm{exp}(-\frac{\lambda^2}{2}\tau_{ij})\}$$
+$$\times\prod_{i=1}^p\textrm{exp}(\frac{\lambda}{2}\omega_{ij})\cdot1_{\Omega\in M^+}$$
+after including the likelihood and densities for the diagonal elements of $\Omega$.
+
+We also obtain the conditional distribution for $\lambda$
+
+$$\lambda \sim \textrm{Gamma}(r + D(D+1)/2, s + ||\Omega||_1/2)$$.
+Wang's derivation of the Gibbs updates for $\Omega$ and $\tau$ then proceeds as 
+follows. First, partition $\Omega$, $S$, and $\mathcal{T} = \{\tau_{ij}\}_{\in D\times D}$
+
+$$\Omega = \begin{bmatrix}
+\Omega_{11} & \boldsymbol{\omega}_{12} \\
+\boldsymbol{\omega}_{12}' & \omega_{22} 
+\end{bmatrix} \space S = \begin{bmatrix}
+S_{11} & \boldsymbol{s}_{12} \\
+\boldsymbol{s}_{12}' & s_{22} 
+\end{bmatrix} \space \mathcal{T} = \begin{bmatrix}
+\mathcal{T}_{11} & \boldsymbol{\tau}_{12} \\
+\boldsymbol{\tau}_{12}' & 0 
+\end{bmatrix} \space$$
+
+where $\Omega_{11}, S_{11}, \mathcal{T}_{11}$ are block matrices and $\boldsymbol{\omega}_{12}, \boldsymbol{s}_{12}, \boldsymbol{\tau}_{12}$ are length $D-1$ vectors containing the joint precisions, sample covariances, and scaling factors
+for the current update. Then the conditional joint distribution of $(\boldsymbol{\omega}_{12},\omega_{22})$
+is 
+$$p(\boldsymbol{\omega}_{12},\omega_{22}|\Omega_{11},\mathcal{T},\textbf{Y},\lambda) \propto (\omega_{22} - \boldsymbol{\omega}_{12}' \Omega_{11}^{-1}\boldsymbol{\omega}_{12})^{\frac{n}{2}}$$
+$$\times \textrm{exp}[-\frac{1}{2}\{\boldsymbol{\omega}_{12}'D_{\tau}^{-1}\boldsymbol{\omega}_{12} + 2s'_{12}\boldsymbol{\omega}_{12} + (s_{22}+\lambda)\omega_{22}\}]$$
+where $D_{\tau}^{-1}$ is the inverse of $\textrm{diag}(\boldsymbol{\tau})$. We then
+make the variable substitution $(\boldsymbol{\omega}_{12},\omega_{22}) \to (\boldsymbol{\beta} = \boldsymbol{\omega}_{12}, \gamma = \omega_{22} - \boldsymbol{\omega}_{12}' \Omega_{11}^{-1}\boldsymbol{\omega}_{12})$. The Jacobian
+is constant in $\beta, \gamma$, so we obtain
+
+$$p(\gamma, \beta \space | \space \Omega_{11}, \mathcal{T}, \textbf{Y}, \lambda) \propto \gamma^{n/2}\textrm{exp}(-\frac{s_{22} + \lambda}{2}\gamma) \times \textrm{exp}(-\frac{1}{2}[\beta'\{D_{\tau}^{-1} + (s_{22}+\lambda)\Omega_{11}^{-1}\}\beta + 2s_{12}'\beta])$$
+which implies 
+
+$$(\gamma, \boldsymbol{\beta})|(\Omega_{11}, \mathcal{T}, \textbf{Y}, \lambda) \sim
+\textrm{Gamma}(\frac{n}{2}+1, \frac{s_{22}+\lambda}{2}) \times 
+\textrm{N}(-\textbf{C}s_{21}, \textbf{C})$$
+where  $\textbf{C} = \{(s_{22}+\lambda)\Omega_{11}^{-1} + D_{\tau}^{-1}\}^{-1}$.
+It can be shown that sampling from this distribution guarantees positive
+definiteness of $\Omega$. To sample from the posterior of $\tau$, it can further be shown that conditional posteriors of $u_{ij} = \frac{1}{\tau_{ij}}$ are independently inverse Gaussian with parameters $\mu'=\sqrt{\lambda^2 / \omega_{ij}^2}, \lambda'=\lambda^2$. The full algorithm is then as follows: 
+
+Given current $\Omega$, $\tau$, and $\lambda$:
+
+1. For $i=1,...,D$
+    (a) Partition $\Omega,S$ and $\mathcal{T}$ as shown
+    (b) Sample $\gamma \sim (\Omega_{11}, \mathcal{T}, \textbf{Y}, \lambda) \sim \textrm{Gamma}(\frac{n}{2}+1, \frac{s_{22}+\lambda}{2})$ and 
+$\boldsymbol{\beta} \sim \textrm{N}(-\textbf{C}s_{21}, \textbf{C})$
+    (c) Update $\boldsymbol{\omega}_{12}=\beta, \omega_{22} = \gamma + \beta'\Omega_{11}^{-1}\beta$
+
+2. Sample $\lambda$ from $\lambda \sim \textrm{Gamma}(r + D(D+1)/2, s + ||\Omega||_1/2)$
+
+3. For $i<j$, sample $u_{ij} \sim \textrm{Inv-Gau}(\mu',\lambda')$ and update
+$\tau_{ij} = \frac{1}{u_{ij}}$
+
+## Simulation Study
+
+### Setup
+
+To evaluate the performance of the algorithm, a small simulation study was conducted 
+on simulated fMRI time series data across several different values of $D$ to simulate different-size brain atlases. To simulate these data, scale-free graphs of size $D$ were generated using the R package igraph's function `sample_pa` and randomly rewired with a small probability to approximate real brain networks (disconnected graphs were discarded). Adjacency matrices were then generated from these graphs and random noise added to each non-zero entry to obtain off-diagonal elements of the precision matrix $\Omega$. The diagonal was generated to ensure positive definiteness. Finally, time series were generated by randomly sampling $T=200$ times from a Gaussian  $\mathcal{MVN}(\textbf{0}_{D},\Omega^{-1})$. Three scenarios with $D = 25, 50, 100$ nodes were considered, and 2 chains were fit for each data set.
+
+Larger graphs were attempted but caused numerical stability issues in the algorithm. 
+Each scenario received 100 simulations with 1000 total samples including 200 burn-in samples. For each simulation, classical Graphical Lasso was applied to the data with 10-fold cross validation. For each simulation, an estimate of $\Omega$ and optimal tuning parameter $\lambda$ were used as the initial values for the Bayesian Graphical Lasso for
+1 chain. The other chain used the inverse of the sample covariance $S^{-1}$ and
+a random sample from $\textrm{Gamma}(1, 0.005)$ for $\Omega, \lambda$ respectively.
+
+
+We were interested in both the Bayesian Graphical Lasso's ability to estimate the 
+true values of $\omega_{ij}$ and its ability to classify edges and non-edges. Unlike the classic Graphical Lasso which shrinks edge weights to exactly 0, Bayesian methods give 0 probability to the event $\omega_{ij} = 0$, so a heuristicclassification rule is required. For a given edge $i,j$, Wang suggests taking the ratio of the posterior mean partial correlation $\hat{\rho_{ij}}$ to its expected value under the analogous unpenalized Normal-Wishart conjugate prior $\Omega | S \sim  \textrm{Wishart}(\textbf{W}, \nu)$. Instead, we take the somewhat ad-hoc approach of classifying edge $i,j$ as an edge if a 95% credible interval for $\omega_{ij}$ does not contain 0 and not an edge if it does. 
+
+To evaluate accuracy of $\omega_{ij}$ estimation, we evaluated the coverage of 95%
+posterior credible intervals for $\omega_{ij}$ as well as Stein's Loss, a scale-invariant
+loss function for covariance matrix estimation. To evaluate classification accuracy,
+we considered sensitivity, specificity, and Matthews Correlation Coefficient (MCC). 
+We also recorded computing time across the scenarios. All of these metrics except for credible interval coverage were then compared to the corresponding metrics for the 
+Graphical Lasso estimates used to initialize the Gibbs Sampler.
+
+### Results
+
+The algorithm showed generally good mixing and good effective sample sizes, though
+it tended to overestimate diagonal elements across dimensions. $\hat{\omega_{ij}}$ posterior 
+means are shown below against the true $\omega_{ij}$ values for 3 randomly
+selected simulation runs. 
+
+```{r}
+#| echo: False
+knitr::include_graphics(here::here("figures","versus plot.png"))
+knitr::include_graphics(here::here("figures/trace plots.png"))
+```
+
+There were virtually no differences between initializing with the graphical lasso 
+estimates and without. The Bayesian method generally saw improvements in Stein's Loss,
+MCC, and sensitivity. Specificity was similar between the two methods.
+
+```{r}
+#| echo: False
+knitr::include_graphics(here::here("figures/class.png"))
+```
+Stein's Loss was also lower for the Bayesian Graphical Lasso. Unsurprisingly, 
+computing time was much worse for the Bayesian method.
+
+```{r}
+#| echo: False
+knitr::include_graphics(here::here("figures/stein.png"))
+knitr::include_graphics(here::here("figures/comp.png"))
+```
+
+## Discussion
+
+The Graphical Lasso is a powerful and commonly-used tool to estimate graphs. Its 
+Bayesian counterpart summarized here can provide uncertainty quantification to edge estimates as well as the tuning parameter $\lambda$ by including it as a parameter 
+in the Gibbs sampler. It also showed generally improved performance across several
+metrics, especially its senitivity in edge detection.
+
+With these advantages come some distinct disadvantages. As
+with any MCMC sampler, computation time is a significant challenge. While the 
+blocked nature of the algorithm does make computation for small and moderate dimension 
+graphs reasonable, computation time suffers greatly with large dimensionality.
+In practice, many brain atlases can have D as high as 1000, a size that would 
+not be feasible with the current code used to implement this method. The dependent
+nature of the sampler updates means that it is difficult to parallelize computation
+across any scale smaller than individual simulation jobs. Lastly, due to fundamentals of Bayesian Inference and probability, non-edges cannot be shrunk to exactly zero and heuristic classification rules must be specified. 
+
+Future implementations of this algorithm could translate slow loops from the 
+current code into Rcpp which could dramatically speed up computation time. This would
+allow performance of the algorithm to be assessed for larger values of D which reflect
+larger parcellations. For classification, we used an ad-hoc credible-interval based method, but it would be worthwhile to implement Wang's suggested heuristic for edge classification and compare its performance. Finally, it would be interesting to 
+implement the so-called "Bayesian Adaptive Graphical Lasso" also developed by Wang
+which allows different shrinkage parameters $\lambda_{ij}$ at each edge. 
+
+The GitHub repository for this project is located at https://github.com/lhanson01/BIOS_731_fp.
+
+# References
+
+
+
+
+
+
+
+
+
 

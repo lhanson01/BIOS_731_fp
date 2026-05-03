@@ -6,8 +6,12 @@ extract_true_edge <- function(g){
 }
 
 
-results_paths <- file.path(here::here("results"), 
-                           list.files("results"))
+
+
+# results_paths <- file.path(here::here("results"), 
+#                            list.files("results"))
+results_paths <- file.path(here::here("sim_results_2"),  
+                           list.files("sim_results_2"))
 res_list <- vector(mode="list", length = length(results_paths))
 for(i in 1:length(results_paths)){
   print(i)
@@ -15,11 +19,13 @@ for(i in 1:length(results_paths)){
   g <- chain_res[[1]]$g[[1]]
   chain1 <- chain_res[[1]]$results_tib %>% 
     nest(gibbs_labels = labels_gibbs, glasso_labels = labels_glasso) %>%
-    mutate(true_edge = list(extract_true_edge(g))) 
+    mutate(true_edge = list(extract_true_edge(g)),
+           chain_id = "GL Start") 
     
   chain2 <- chain_res[[2]]$results_tib %>% 
     nest(gibbs_labels = labels_gibbs, glasso_labels = labels_glasso) %>%
-    mutate(true_edge = list(extract_true_edge(g))) 
+    mutate(true_edge = list(extract_true_edge(g)),
+           chain_id = "Inverse Start") 
   
   res_list[[i]] <- bind_rows(chain1, chain2)
 }
@@ -69,7 +75,7 @@ summarize_res <- fix_glasso %>%
     names_to = c(".value", "Method"),
     names_pattern = "(.*)_(gibbs|glasso)"
   ) %>%
-  group_by(D, Method) %>%
+  group_by(D, Method, chain_id) %>%
   summarise(
     `Stein's Loss` = mean(stein),
     Stein_SE = sd(stein) / sqrt(n()),
@@ -96,7 +102,8 @@ summarize_res <- fix_glasso %>%
   mutate(
     Method = factor(Method),
     Dimension = factor(D)
-  )
+  ) %>%
+  filter(!(Method == "glasso" & chain_id == "GL Start"))
 
 
 

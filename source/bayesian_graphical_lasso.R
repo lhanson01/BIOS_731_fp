@@ -17,7 +17,7 @@ eval_class <- function(est_labels, true_labels){
 }
 
 bayesian_graphical_lasso <- function(data, r = 1, s_par = 0.01, n_iter, n_burn,
-                                    simID = 1, is_sim = TRUE){
+                                    simID = 1, is_sim = TRUE, gl_init = TRUE){
   
   Y <- data$Y
   D <- dim(as.matrix(Y))[1]
@@ -27,18 +27,28 @@ bayesian_graphical_lasso <- function(data, r = 1, s_par = 0.01, n_iter, n_burn,
   comp_time_glasso <- system.time({
     glasso <- do_glasso(Y)
   })
-
-  lambda_init <- glasso$lambda #rgamma(1,
-  #                      shape = r,
-  #                      scale = s_par)
-  W_init <- glasso$Omega
-  glasso_labels <- as.numeric(abs(W_init[upper.tri(W_init, diag = TRUE)]) > 0)
+  
+  W_glasso <- glasso$Omega
+  lambda_glasso <- glasso$lambda
+  
+  if(gl_init){
+    lambda_init <- lambda_glasso
+    W_init <- W_glasso
+  
+  } else {
+    lambda_init <- rgamma(1,
+                          rate = r,
+                          shape = s_par)
+    W_init <- solve(S)
+  }
+  
+  glasso_labels <- as.numeric(abs(W_glasso[upper.tri(W_init, diag = TRUE)]) > 0)
   
   if(is_sim){
     W_true <- data$W_true
     W_true_vec <- W_true[upper.tri(W_true, diag = TRUE)]
     stein_glasso <-
-      sum(diag(solve(W_init)%*%W_true)) - log(det(solve(W_init)%*%W_true)) - D
+      sum(diag(solve(W_glasso)%*%W_true)) - log(det(solve(W_glasso)%*%W_true)) - D
   }
   
   comp_time_gibbs <- system.time({
@@ -65,7 +75,7 @@ bayesian_graphical_lasso <- function(data, r = 1, s_par = 0.01, n_iter, n_burn,
   tau_hist[1,] <- tau[upper.tri(tau, diag = TRUE)]
   
   for(iter in 2:n_iter){
-    print(iter)
+    #print(iter)
     # Sample omega
     for(i in 1:D){
       #print(i)
@@ -80,8 +90,17 @@ bayesian_graphical_lasso <- function(data, r = 1, s_par = 0.01, n_iter, n_burn,
       
       block_tau <- tau[-i,-i]
       tau_col <- tau[-i,i]
-      
-      C <- solve((s_corner + lambda) * solve(block_w) + solve(diag(tau_col)))
+
+      singular_d_test <- class(try(solve(diag(tau_col))))
+      if("try-error" %in% singular_d_test){
+        d_tau_inv <- matrix(0, nrow = D-1, ncol=D-1)
+        print("error")
+      } else {
+        d_tau_inv <- solve(diag(tau_col))
+        #print(dim(d_tau_inv))
+      }
+
+      C <- solve((s_corner + lambda) * solve(block_w) + d_tau_inv)
       eig_C <- eigen(C)
       C_eig_val <- eig_C$values
       beta_sd <- eig_C$vectors%*%diag(sqrt(C_eig_val))%*%solve(eig_C$vectors)
@@ -104,18 +123,17 @@ bayesian_graphical_lasso <- function(data, r = 1, s_par = 0.01, n_iter, n_burn,
     for(w in 1:length(W_vec)){
       mu_prime <- sqrt(lambda^2/ W_vec[w]^2)
       u <- brms::rinv_gaussian(1, mu_prime, lambda^2)
-      tau_vec[w] <- max(1/u, 1e-10)
+      tau_vec[w] <- 1/u 
     }
+    print(mean(tau_vec))
     tau[upper.tri(tau)] <- tau[lower.tri(tau)] <- tau_vec
-  
+    
     W_hist[iter, ] <- W[upper.tri(W, diag = TRUE)]
     lambda_hist[iter] <- lambda
     tau_hist[iter, ] <- tau[upper.tri(tau, diag = TRUE)]
   }
   
-  print(n_burn)
-  print(n_iter)
-  print(dim(W_hist))
+
   W_post_mean <- colMeans(W_hist[(n_burn+1):n_iter,])
   lambda_post_mean <- mean(lambda_hist[(n_burn+1):n_iter])
   tau_post_mean <- colMeans(tau_hist[(n_burn+1):n_iter,])
@@ -170,7 +188,7 @@ bayesian_graphical_lasso <- function(data, r = 1, s_par = 0.01, n_iter, n_burn,
                    spec_glasso = glasso_perf$spec,
                    sens_glasso = glasso_perf$sens,
                    comp_time_glasso = comp_time_glasso[3],
-                   lambda_glasso = lambda_init,
+                   lambda_glasso = lambda_glasso,
                    labels_glasso = glasso_labels,
                    stein_glasso = stein_glasso,
                    ),
@@ -188,13 +206,13 @@ bayesian_graphical_lasso <- function(data, r = 1, s_par = 0.01, n_iter, n_burn,
                    lambda_gibbs = lambda_post_mean,
                    labels_gibbs = gibbs_labels,
                    comp_time_glasso = comp_time_glasso[3],
-                   lambda_glasso = lambda_init,
+                   lambda_glasso = lambda_glasso,
                    labels_glasso = glasso_labels
                    ),
                  W_hist = W_hist,
                  lambda_hist = lambda_hist,
                  tau_hist = tau_hist,
-                 W_est = W_mat,
+                 W_est = W_mat
       )
   }
                  
@@ -203,6 +221,4 @@ bayesian_graphical_lasso <- function(data, r = 1, s_par = 0.01, n_iter, n_burn,
   
 }
 
-
-##### For testing, delete later ####
 

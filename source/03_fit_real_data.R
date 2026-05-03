@@ -22,8 +22,8 @@ combined_ctrls_txd <- as.matrix(combined_ctrls_txd_full)
 combined_trt_txd <- as.matrix(combined_trt_txd_full)
 
 
-n_iter <- 1000
-n_burn <- 100
+n_iter <- 500
+n_burn <- 200
 n_chain <- 2
 job <- as.numeric(commandArgs(trailingOnly = TRUE))
 

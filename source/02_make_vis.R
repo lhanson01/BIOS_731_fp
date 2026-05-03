@@ -1,49 +1,68 @@
-#### Get graphs, trace plots, and lag plots for lambda, omega off diag, omega diag
-
-these_sims <- sample(1:399,10)
-plot_tib <- tibble()
-
-for(sim in these_sims){
-  print(sim)
-  load(results_paths[sim])
-  W_post_means <- colMeans(bgl_test$W_hist[200:400,])
-  D <- 100#chain_res[[1]]$results_tib$D[1]
-  diag_entries <- seq_len(D) * (seq_len(D)+1)/2
-  random_diag <- sample(diag_entries,1)
-  non_zero_ind <-  which(bgl_test$W_true != 0)
-  non_diag <- non_zero_ind[!(non_zero_ind %in% diag_entries)]
-  random_non_diag <- sample(non_diag,1)
-  zero_ind <- which(bgl_test$W_true == 0)
-  zero_random_non_diag<- sample(zero_ind,1)
-  index <- 1:length(W_post_means)
-  entry_type <- ifelse(index %in% diag_entries, "red", 
-                       ifelse(index %in% non_diag, "blue", 
-                              "green"))
-
-  plot( bgl_test$W_true, W_post_means,main = paste("D =", D), pch = 1, 
-       col= entry_type, ylab = "W post", xlab = "W true")
-  abline(a=0,b=1)
-  legend(
-    x = 16, y = max(W_post_means)-3, cex = 0.5,
-    legend = c("Zero-Off Diag","Non-Zero Off-Diag",  "Diag" ),
-    fill = c("green", "blue", "red")
-  )
-
-  for(i in c(1,2)){
-    tib <- tibble(
-      chain = i,
-      D = D,
-      diag_true = rep(chain_res[[i]]$W_true[random_diag],1000),
-      diag_hist = chain_res[[i]]$W_hist[,random_diag],
-      non_diag_true = rep(chain_res[[i]]$W_true[random_non_diag],1000),
-      non_diag_hist = chain_res[[i]]$W_hist[,random_non_diag],
-      zero_non_diag_true = rep(chain_res[[i]]$W_true[zero_random_non_diag],1000),
-      zero_non_diag_hist = chain_res[[i]]$W_hist[,zero_random_non_diag],
-      g = list(chain_res[[1]]$g[[1]])
-    ) %>% mutate(x = 1:1000)
-    plot_tib <- bind_rows(plot_tib,tib) 
+  #### Get graphs, trace plots, and lag plots for lambda, omega off diag, omega diag
+  
+  these_sims <- c(109,277, 1)#sample(1:length(results_paths),3)
+  plot_tib <- tibble()
+  
+  df <- data.frame()
+  for(sim in these_sims){
+    print(sim)
+    load(results_paths[sim])
+    W_post_means <- colMeans(chain_res[[1]]$W_hist[201:1000,])
+    D <- chain_res[[1]]$results_tib$D[1]
+    diag_entries <- seq_len(D) * (seq_len(D)+1)/2
+    random_diag <- sample(diag_entries,1)
+    non_zero_ind <-  which(chain_res[[1]]$W_true != 0)
+    non_diag <- non_zero_ind[!(non_zero_ind %in% diag_entries)]
+    random_non_diag <- sample(non_diag,1)
+    zero_ind <- which(chain_res[[1]]$W_true == 0)
+    zero_random_non_diag<- sample(zero_ind,1)
+    index <- 1:length(W_post_means)
+    entry_type <- ifelse(index %in% diag_entries, "Diagonal", 
+                         ifelse(index %in% non_diag, "Non-Zero Off-Diagonal", 
+                                "Zero Off-Diagonal"))
+  
+    # plot(chain_res[[1]]$W_true, W_post_means,
+    #      main = paste("D =", D), 
+    #      pch = 2,
+    #      cex = 0.6,col= entry_type, ylab = "Omega Posterior Mean", xlab = "True Omega")
+    # abline(a=0,b=1)
+    
+    df <- rbind(df, data.frame(
+                W_true = chain_res[[1]]$W_true, 
+                W_post_mean = W_post_means,
+                entry_type = entry_type,
+                D=D)
+    )
+  
+  
+    for(i in c(1,2)){
+      tib <- tibble(
+        chain = i,
+        D = D,
+        diag_true = rep(chain_res[[i]]$W_true[random_diag],1000),
+        diag_hist = chain_res[[i]]$W_hist[,random_diag],
+        non_diag_true = rep(chain_res[[i]]$W_true[random_non_diag],1000),
+        non_diag_hist = chain_res[[i]]$W_hist[,random_non_diag],
+        zero_non_diag_true = rep(chain_res[[i]]$W_true[zero_random_non_diag],1000),
+        zero_non_diag_hist = chain_res[[i]]$W_hist[,zero_random_non_diag],
+        g = list(chain_res[[1]]$g[[1]])
+      ) %>% mutate(x = 1:1000)
+      plot_tib <- bind_rows(plot_tib,tib) 
+    }
   }
-}
+
+
+  ggplot(df, aes(x = W_true, y = W_post_mean, color = entry_type)) +
+    geom_point(shape = 2, size = 0.6) +
+    geom_abline(slope = 1, intercept = 0) +
+    facet_wrap(vars(D), labeller = label_both) +
+    scale_color_manual(values = c("Zero Off-Diagonal" = "green",
+                                  "Non-Zero Off-Diagonal" = "blue",
+                                  "Diagonal" = "red")) +
+    labs(title = "Omega Posterior Means vs. True Omega",
+         x = "True Omega", y = "Omega Posterior Mean",
+         color = NULL) +
+    theme_bw()
 
 plot_tib_grouped <- plot_tib %>%
   pivot_longer(
@@ -56,7 +75,50 @@ plot_tib_grouped <- plot_tib %>%
          Dimension = factor(D),
          ESS = round(coda::effectiveSize(hist),1)) 
   
+library(cowplot)
 
+base_theme <- theme_bw() +
+  theme(
+    plot.title = element_text(size = 9, hjust = 0.5),
+    strip.text = element_text(size = 8),
+    axis.text = element_text(size = 7),
+    axis.title = element_text(size = 8),
+    legend.position = "none"  # remove per-plot legends, add one shared one below
+  )
+
+diag_plot <- ggplot(plot_tib_grouped %>% filter(location == "diag"), 
+                    aes(x = x, y = hist, col = Dimension)) +
+  geom_line(linewidth = 0.05) + 
+  geom_hline(aes(yintercept = true, col = Dimension), linetype = "dashed") +
+  facet_wrap(vars(chain)) + 
+  labs(x = "Iteration", y = "Value", title = "Diagonal") +
+  base_theme
+
+off_diag_plot <- ggplot(plot_tib_grouped %>% filter(location == "non_diag"), 
+                        aes(x = x, y = hist, col = Dimension)) +
+  geom_line(linewidth = 0.05) + 
+  geom_hline(aes(yintercept = true, col = Dimension), linetype = "dashed") +
+  facet_wrap(vars(chain)) + 
+  labs(x = "Iteration", y = "Value", title = "Non-Zero Off-Diagonal") +
+  base_theme
+
+zero_off_diag_plot <- ggplot(plot_tib_grouped %>% filter(location == "zero_non_diag"), 
+                             aes(x = x, y = hist, col = Dimension)) +
+  geom_line(linewidth = 0.05) + 
+  geom_hline(aes(yintercept = true, col = Dimension), linetype = "dashed") +
+  facet_wrap(vars(chain)) + 
+  labs(x = "Iteration", y = "Value", title = "Zero Off-Diagonal") +
+  base_theme
+
+# extract shared legend from one of the plots
+legend <- get_legend(diag_plot + theme(legend.position = "right"))
+
+# combine
+plot_grid(
+  plot_grid(diag_plot, off_diag_plot, zero_off_diag_plot, ncol = 1),
+  legend,
+  rel_widths = c(1, 0.15)
+)
 
 
 diag_plot <- ggplot(plot_tib_grouped %>% filter(location == "diag"), 
@@ -66,7 +128,7 @@ diag_plot <- ggplot(plot_tib_grouped %>% filter(location == "diag"),
   facet_wrap(vars(chain)) + 
   theme(plot.title = element_text(size = 10, hjust = 0.5))  +
   labs(x = "Iteration", y = "Value", 
-       title = "Trace Plots for Diagonal Element across 4 different
+       title = "Trace Plots for Diagonal Element across 3 different
        sims, 2 chains") 
 
 off_diag_plot <- ggplot(plot_tib_grouped %>% filter(location == "non_diag"), 
@@ -76,7 +138,7 @@ off_diag_plot <- ggplot(plot_tib_grouped %>% filter(location == "non_diag"),
   facet_wrap(vars(chain)) + 
   theme(plot.title = element_text(size = 10, hjust = 0.5))  +
   labs(x = "Iteration", y = "Value", 
-       title = "Trace Plots for Non-Zero Off-Diagonal Element across 4 different
+       title = "Trace Plots for Non-Zero Off-Diagonal Element across 3 different
        sims, 2 chains")
 
 zero_off_diag_plot <- ggplot(plot_tib_grouped %>% filter(location == "zero_non_diag"), 
@@ -86,8 +148,10 @@ zero_off_diag_plot <- ggplot(plot_tib_grouped %>% filter(location == "zero_non_d
   facet_wrap(vars(chain)) + 
   theme(plot.title = element_text(size = 10, hjust = 0.5))  +
   labs(x = "Iteration", y = "Value", 
-      title = "Trace Plots for Zero Off-Diagonal Element across 4 different
+      title = "Trace Plots for Zero Off-Diagonal Element across 3 different
        sims, 2 chains")
+
+cowplot::plot_grid(plotlist = list(diag_plot, off_diag_plot, zero_off_diag_plot))
 
 ggsave(
   here::here("figures", "diag_trace.png"),
@@ -138,7 +202,7 @@ omega_cov <- res_tib %>%
 omega_cov_plot <- ggplot(data = omega_cov, aes(y = Omega_Coverage, x = Dimension, 
                              fill = Dimension)) +
   geom_bar(position = "dodge", stat = "identity") +
-  coord_cartesian(ylim=c(0.8,1)) + 
+  coord_cartesian(ylim=c(0.7,1)) + 
   geom_hline(yintercept = 0.95, linetype = "dashed") + 
   labs(title = "Coverage of Omega by Dimension", y = "Coverage")
 
@@ -159,6 +223,49 @@ sens_plot <- ggplot(data = summarize_res, aes(fill = Dimension, y = Sensitivity,
   geom_errorbar(aes(ymin = Sens_LL, ymax = Sens_UL), 
                 position = position_dodge(0.9), width = 0.5, color = "grey25") +
   labs(title = "Sensitivity by method", y = "Sensitivity")
+
+###############3
+base_theme <- theme_bw() +
+  theme(
+    plot.title = element_text(size = 9, hjust = 0.5),
+    axis.text = element_text(size = 7),
+    axis.text.x = element_text(angle = 30, hjust = 1),  # angle method labels if crowded
+    axis.title = element_text(size = 8),
+    strip.text = element_text(size = 8),
+    legend.position = "none"
+  )
+
+mcc_plot <- ggplot(data = summarize_res, aes(fill = Dimension, y = MCC, x = Method)) +
+  geom_bar(position = "dodge", stat = "identity") +
+  geom_errorbar(aes(ymin = MCC_LL, ymax = MCC_UL), 
+                position = position_dodge(0.9), width = 0.5, color = "grey25") +
+  labs(title = "MCC", y = "MCC", x = NULL) +
+  base_theme
+
+spec_plot <- ggplot(data = summarize_res, aes(fill = Dimension, y = Specificity, x = Method)) +
+  geom_bar(position = "dodge", stat = "identity") +
+  geom_errorbar(aes(ymin = Spec_LL, ymax = Spec_UL), 
+                position = position_dodge(0.9), width = 0.5, color = "grey25") +
+  labs(title = "Specificity", y = "Specificity", x = NULL) +
+  base_theme
+
+sens_plot <- ggplot(data = summarize_res, aes(fill = Dimension, y = Sensitivity, x = Method)) +
+  geom_bar(position = "dodge", stat = "identity") +
+  geom_errorbar(aes(ymin = Sens_LL, ymax = Sens_UL), 
+                position = position_dodge(0.9), width = 0.5, color = "grey25") +
+  labs(title = "Sensitivity", y = "Sensitivity", x = NULL) +
+  base_theme
+
+legend <- get_legend(mcc_plot + theme(legend.position = "right"))
+
+plot_grid(
+  plot_grid(mcc_plot, spec_plot, sens_plot, ncol = 3),
+  legend,
+  rel_widths = c(1, 0.15)
+)
+
+###############################3
+
 
 stein_plot <- ggplot(data = summarize_res, aes(fill = Dimension, y = `Stein's Loss`, x = Method)) +
   geom_bar(position = "dodge", stat = "identity") +
